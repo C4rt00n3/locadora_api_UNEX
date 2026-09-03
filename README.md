@@ -304,5 +304,4 @@ curl -X PATCH http://localhost:3000/api/pedidos/1005/status \
 | 404 | Documento ou rota inexistente |
 | 409 | Número de pedido já cadastrado |
 | 500 | Erro inesperado (registrado no console) |
-#   l o c a d o r a _ a p i _ U N E X  
- 
+#
