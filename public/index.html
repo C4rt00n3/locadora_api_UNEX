@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>API MongoDB — Lista de Exercícios</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #fff; --texto: #1e2530; --suave: #667085;
+    --borda: #e3e7ec; --azul: #13593f; --acento: #0f7b56; --codigo: #eef1f4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#14181d; --card:#1c2128; --texto:#e6e9ee; --suave:#9aa4b2;
+            --borda:#2c333c; --azul:#4ade80; --acento:#34d399; --codigo:#232931; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--texto);
+         font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 32px 20px 60px; }
+  h1 { font-size: 27px; margin: 0 0 4px; letter-spacing: -.02em; }
+  .sub { color: var(--suave); margin: 0 0 26px; }
+  h2 { font-size: 15px; text-transform: uppercase; letter-spacing:.07em;
+       color: var(--suave); margin: 30px 0 10px; }
+  .card { background: var(--card); border: 1px solid var(--borda);
+          border-radius: 10px; padding: 4px 16px; margin-bottom: 14px; }
+  .linha { display: flex; gap: 12px; align-items: baseline; padding: 9px 0;
+           border-bottom: 1px solid var(--borda); flex-wrap: wrap; }
+  .linha:last-child { border-bottom: 0; }
+  .met { font: 600 11px/1 ui-monospace,Consolas,monospace; padding: 4px 7px;
+         border-radius: 4px; color:#fff; min-width: 52px; text-align:center; }
+  .GET{background:#2563eb} .POST{background:#16a34a}
+  .PATCH{background:#d97706} .DELETE{background:#dc2626}
+  code { font: 13px/1.4 ui-monospace,Consolas,monospace; background: var(--codigo);
+         padding: 2px 6px; border-radius: 4px; }
+  .desc { color: var(--suave); font-size: 13.5px; flex: 1 1 260px; }
+  a { color: var(--acento); }
+  .grade { display:flex; flex-wrap:wrap; gap:8px; }
+  .grade a { display:block; padding:9px 14px; background:var(--card); text-decoration:none;
+             border:1px solid var(--borda); border-radius:8px; font-weight:600; font-size:13.5px; }
+  .grade a:hover { border-color: var(--acento); }
+  .grade a span { display:block; font-weight:400; font-size:11.5px; color:var(--suave); }
+  footer { margin-top: 36px; color: var(--suave); font-size: 13px;
+           border-top: 1px solid var(--borda); padding-top: 14px; }
+  .destaque { background: var(--card); border: 1px solid var(--borda); border-left: 4px solid var(--acento);
+              border-radius: 10px; padding: 15px 17px; margin-bottom: 20px;
+              display: flex; gap: 16px; align-items: center; flex-wrap: wrap;
+              justify-content: space-between; }
+  .botoes { display: flex; gap: 8px; flex-wrap: wrap; }
+  .botoes a { display: inline-block; padding: 8px 14px; border: 1px solid var(--borda);
+              border-radius: 7px; text-decoration: none; font-weight: 600; font-size: 13px; }
+  .botoes a.primario { background: var(--acento); border-color: var(--acento); color: #fff; }
+  .botoes a:hover { border-color: var(--acento); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>API MongoDB — Lista de Exercícios</h1>
+  <p class="sub">Node.js + Express + driver oficial do MongoDB. Banco <code>loja</code>.</p>
+
+  <div class="destaque">
+    <div>
+      <strong>Documentação interativa (Swagger UI)</strong>
+      <p class="desc" style="margin:3px 0 0">Todos os 37 endpoints com exemplos, schemas e botão <em>Try it out</em> para executar direto do navegador.</p>
+    </div>
+    <div class="botoes">
+      <a class="primario" href="/docs">Abrir Swagger UI</a>
+      <a href="/docs.json">openapi.json</a>
+      <a href="/docs.yaml">openapi.yaml</a>
+    </div>
+  </div>
+
+  <h2>Exercícios da lista</h2>
+  <p class="desc" style="margin-top:-4px">Cada endpoint devolve o enunciado, o comando equivalente no mongosh e o resultado vindo do banco.</p>
+  <div class="grade" id="grade"></div>
+
+  <h2>Produtos</h2>
+  <div class="card">
+    <div class="linha"><span class="met GET">GET</span><code>/api/produtos</code><span class="desc">Filtros: <code>?marca=</code> <code>?precoMin=&amp;precoMax=</code> <code>?ordenarPor=preco&amp;ordem=desc&amp;limite=3</code> <code>?campos=nome,preco&amp;semId=true</code></span></div>
+    <div class="linha"><span class="met GET">GET</span><code>/api/produtos/contagem</code><span class="desc">countDocuments()</span></div>
+    <div class="linha"><span class="met GET">GET</span><code>/api/produtos/:id</code><span class="desc">Busca por ObjectId</span></div>
+    <div class="linha"><span class="met POST">POST</span><code>/api/produtos</code><span class="desc">Aceita um objeto ou um array (insertOne / insertMany)</span></div>
+    <div class="linha"><span class="met PATCH">PATCH</span><code>/api/produtos/:id</code><span class="desc">$set nos campos enviados</span></div>
+    <div class="linha"><span class="met PATCH">PATCH</span><code>/api/produtos/:id/estoque</code><span class="desc">$inc — body <code>{ "quantidade": 5 }</code></span></div>
+    <div class="linha"><span class="met PATCH">PATCH</span><code>/api/produtos/:id/preco</code><span class="desc">$inc — body <code>{ "valor": 50 }</code></span></div>
+    <div class="linha"><span class="met POST">POST</span><code>/api/produtos/marcar-disponiveis</code><span class="desc">updateMany com $set</span></div>
+    <div class="linha"><span class="met DELETE">DELETE</span><code>/api/produtos/:id</code><span class="desc">deleteOne()</span></div>
+  </div>
+
+  <h2>Clientes</h2>
+  <div class="card">
+    <div class="linha"><span class="met GET">GET</span><code>/api/clientes</code><span class="desc"><code>?cidade=</code> (aninhado) <code>?interesse=</code> <code>?tecnologia=</code> (arrays)</span></div>
+    <div class="linha"><span class="met POST">POST</span><code>/api/clientes</code><span class="desc">Aceita endereço aninhado e arrays</span></div>
+    <div class="linha"><span class="met PATCH">PATCH</span><code>/api/clientes/:id/endereco</code><span class="desc">$set com notação de ponto</span></div>
+    <div class="linha"><span class="met POST">POST</span><code>/api/clientes/:id/interesses</code><span class="desc">$push, ou $addToSet com <code>{ "unico": true }</code></span></div>
+    <div class="linha"><span class="met DELETE">DELETE</span><code>/api/clientes/:id/interesses/:valor</code><span class="desc">$pull</span></div>
+  </div>
+
+  <h2>Alunos</h2>
+  <div class="card">
+    <div class="linha"><span class="met GET">GET</span><code>/api/alunos</code><span class="desc"><code>?curso=</code> <code>?idadeMin=20</code> <code>?semestre=4</code> <code>?nota=9</code> <code>?campos=nome,curso</code></span></div>
+    <div class="linha"><span class="met GET">GET</span><code>/api/alunos/media</code><span class="desc">$avg sobre o array de notas</span></div>
+    <div class="linha"><span class="met GET">GET</span><code>/api/alunos/por-curso</code><span class="desc">$unwind + $group</span></div>
+    <div class="linha"><span class="met POST">POST</span><code>/api/alunos/:id/notas</code><span class="desc">$push de uma nota</span></div>
+  </div>
+
+  <h2>Vendas</h2>
+  <div class="card">
+    <div class="linha"><span class="met GET">GET</span><code>/api/vendas</code><span class="desc"><code>?categoria=</code> <code>?quantidadeMin=3</code> <code>?ordenarPor=quantidade</code></span></div>
+    <div class="linha"><span class="met GET">GET</span><code>/api/vendas/resumo</code><span class="desc">$group com $sum e $avg</span></div>
+    <div class="linha"><span class="met GET">GET</span><code>/api/vendas/faturamento</code><span class="desc">$project + $multiply + $group + $sort</span></div>
+  </div>
+
+  <h2>Pedidos</h2>
+  <div class="card">
+    <div class="linha"><span class="met GET">GET</span><code>/api/pedidos</code><span class="desc"><code>?status=</code> <code>?cliente=</code> <code>?cidade=</code> <code>?produto=Notebook</code></span></div>
+    <div class="linha"><span class="met GET">GET</span><code>/api/pedidos/por-status</code><span class="desc">$group por status</span></div>
+    <div class="linha"><span class="met GET">GET</span><code>/api/pedidos/faturamento</code><span class="desc">$unwind + $group — valor de cada pedido</span></div>
+    <div class="linha"><span class="met GET">GET</span><code>/api/pedidos/produtos-mais-vendidos</code><span class="desc">Ranking a partir do array de itens</span></div>
+    <div class="linha"><span class="met POST">POST</span><code>/api/pedidos</code><span class="desc">Calcula o valorTotal a partir dos itens</span></div>
+    <div class="linha"><span class="met PATCH">PATCH</span><code>/api/pedidos/:numero/status</code><span class="desc">$set + $push no histórico</span></div>
+    <div class="linha"><span class="met POST">POST</span><code>/api/pedidos/:numero/itens</code><span class="desc">$push de item + $inc no total</span></div>
+  </div>
+
+  <h2>Filmes</h2>
+  <div class="card">
+    <div class="linha"><span class="met GET">GET</span><code>/api/filmes</code><span class="desc"><code>?genero=</code> <code>?diretor=</code> <code>?ator=</code> <code>?notaMin=8</code></span></div>
+    <div class="linha"><span class="met POST">POST</span><code>/api/filmes/:id/atores</code><span class="desc">$push no elenco</span></div>
+    <div class="linha"><span class="met POST">POST</span><code>/api/filmes/:id/generos</code><span class="desc">$addToSet</span></div>
+  </div>
+
+  <footer>
+    <a href="/api/status">/api/status</a> · <a href="/api">/api</a> ·
+    Banco populado com <code>npm run seed</code>
+  </footer>
+</div>
+
+<script>
+  const titulos = {
+    2:'Primeiro banco', 3:'insertMany', 4:'Filtros básicos', 5:'Comparação',
+    6:'Lógicos', 7:'Projeção', 8:'sort/limit', 9:'$set', 10:'$inc',
+    11:'delete', 12:'Aninhados', 13:'$push/$pull', 14:'$addToSet',
+    15:'Modelagem', 16:'Alunos', 17:'$match/$sort', 18:'$group',
+    19:'Faturamento', 20:'Pedidos'
+  };
+  document.getElementById('grade').innerHTML = Object.entries(titulos)
+    .map(([n, t]) => `<a href="/api/exercicios/${n}">Ex. ${n}<span>${t}</span></a>`).join('');
+</script>
+</body>
+</html>

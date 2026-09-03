@@ -1,0 +1,2081 @@
+openapi: 3.0.3
+info:
+  title: API MongoDB — Lista de Exercícios
+  version: 1.0.0
+  description: |-
+    Lista de Exercícios de MongoDB implementada como API REST com **Node.js + Express**
+    e o driver oficial `mongodb` (sem ODM).
+
+    Cada grupo de rotas corresponde a uma parte da lista:
+
+    | Recurso | Exercícios | Conceitos |
+    |---|---|---|
+    | Produtos | 2 a 11 | CRUD, `$gt`/`$lt`, `$and`/`$or`/`$nor`, projeção, `sort`/`limit`, `$set`, `$inc` |
+    | Clientes | 12, 13, 14 | documentos aninhados, `$push`, `$pull`, `$addToSet` |
+    | Filmes | 15 | modelagem com array + documento aninhado |
+    | Alunos | 16 | arrays de valores, `$avg`, `$unwind` |
+    | Vendas | 17, 18, 19 | `$match`, `$group`, `$project`, `$multiply`, `$sum`, `$avg` |
+    | Pedidos | 20 | array de documentos, `$unwind`, agrupamento por status |
+    | Exercícios | todos | enunciado + comando no mongosh + resultado do banco |
+
+    A rota **`/api/exercicios`** devolve, para cada item da lista, o enunciado, o comando
+    equivalente no `mongosh` e o resultado real vindo do banco.
+  contact:
+    name: Repositório do trabalho
+    url: http://localhost:3000
+  license:
+    name: MIT
+servers:
+  - url: http://localhost:3000
+    description: Ambiente local
+tags:
+  - name: Geral
+    description: Informações e status da API
+  - name: Exercícios
+    description: Um endpoint por item da lista de exercícios
+  - name: Produtos
+    description: Exercícios 2 a 11 — CRUD, filtros, projeção, ordenação
+  - name: Clientes
+    description: Exercícios 12 a 14 — documentos aninhados e arrays
+  - name: Alunos
+    description: Exercício 16 — consultas em array de notas
+  - name: Vendas
+    description: Exercícios 17 a 19 — Aggregation Pipeline
+  - name: Pedidos
+    description: Exercício 20 — desafio final
+  - name: Filmes
+    description: Exercício 15 — modelagem de documentos
+components:
+  schemas:
+    ObjectId:
+      type: string
+      pattern: ^[0-9a-fA-F]{24}$
+      description: Identificador único do documento (24 caracteres hexadecimais).
+      example: 6a98c80f3e8030cb5731e645
+    Produto:
+      type: object
+      required:
+        - nome
+        - preco
+      properties:
+        _id:
+          $ref: '#/components/schemas/ObjectId'
+        nome:
+          type: string
+          example: Notebook
+        marca:
+          type: string
+          example: TechPro
+        preco:
+          type: number
+          example: 4500
+        estoque:
+          type: integer
+          example: 6
+        categoria:
+          type: string
+          example: Periféricos
+          description: Campo opcional — exercício 9c.
+        disponivel:
+          type: boolean
+          example: true
+          description: Adicionado no exercício 10d.
+    ProdutoEntrada:
+      type: object
+      required:
+        - nome
+        - preco
+      properties:
+        nome:
+          type: string
+          example: Webcam
+        marca:
+          type: string
+          example: Vision
+        preco:
+          type: number
+          example: 320
+        estoque:
+          type: integer
+          example: 12
+    Endereco:
+      type: object
+      properties:
+        cidade:
+          type: string
+          example: Vitória da Conquista
+        estado:
+          type: string
+          example: BA
+        cep:
+          type: string
+          example: 45000-100
+    Cliente:
+      type: object
+      required:
+        - nome
+      properties:
+        _id:
+          $ref: '#/components/schemas/ObjectId'
+        nome:
+          type: string
+          example: Ana Silva
+        email:
+          type: string
+          format: email
+          example: ana@email.com
+        endereco:
+          $ref: '#/components/schemas/Endereco'
+        interesses:
+          type: array
+          items:
+            type: string
+          example:
+            - games
+            - programacao
+            - musica
+        tecnologias:
+          type: array
+          items:
+            type: string
+          example:
+            - JavaScript
+            - MongoDB
+    Aluno:
+      type: object
+      required:
+        - nome
+        - curso
+      properties:
+        _id:
+          $ref: '#/components/schemas/ObjectId'
+        nome:
+          type: string
+          example: Lucas
+        curso:
+          type: string
+          example: Sistemas de Informação
+        idade:
+          type: integer
+          example: 21
+        semestre:
+          type: integer
+          example: 4
+        notas:
+          type: array
+          items:
+            type: number
+          example:
+            - 8.5
+            - 7
+            - 9
+    Venda:
+      type: object
+      required:
+        - produto
+        - categoria
+        - quantidade
+        - valorUnitario
+      properties:
+        _id:
+          $ref: '#/components/schemas/ObjectId'
+        produto:
+          type: string
+          example: Notebook
+        categoria:
+          type: string
+          example: Informática
+        quantidade:
+          type: integer
+          example: 2
+        valorUnitario:
+          type: number
+          example: 4500
+    ItemPedido:
+      type: object
+      required:
+        - produto
+        - quantidade
+        - preco
+      properties:
+        produto:
+          type: string
+          example: Notebook
+        quantidade:
+          type: integer
+          example: 1
+        preco:
+          type: number
+          example: 4500
+    ClientePedido:
+      type: object
+      properties:
+        nome:
+          type: string
+          example: Ana Silva
+        cidade:
+          type: string
+          example: Vitória da Conquista
+    Pedido:
+      type: object
+      required:
+        - numero
+        - cliente
+        - itens
+      properties:
+        _id:
+          $ref: '#/components/schemas/ObjectId'
+        numero:
+          type: integer
+          example: 1001
+        cliente:
+          $ref: '#/components/schemas/ClientePedido'
+        itens:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemPedido'
+        status:
+          $ref: '#/components/schemas/StatusPedido'
+        formaPagamento:
+          type: string
+          example: Cartão
+        valorTotal:
+          type: number
+          example: 4800
+          description: Calculado pela API a partir dos itens.
+        historicoStatus:
+          type: array
+          items:
+            type: object
+            properties:
+              status:
+                type: string
+              data:
+                type: string
+                format: date-time
+    StatusPedido:
+      type: string
+      enum:
+        - Aguardando pagamento
+        - Pago
+        - Enviado
+        - Entregue
+        - Cancelado
+      example: Pago
+    Filme:
+      type: object
+      required:
+        - titulo
+        - ano
+      properties:
+        _id:
+          $ref: '#/components/schemas/ObjectId'
+        titulo:
+          type: string
+          example: Interestelar
+        ano:
+          type: integer
+          example: 2014
+        classificacaoIndicativa:
+          type: string
+          example: 12 anos
+        duracaoMinutos:
+          type: integer
+          example: 169
+        generos:
+          type: array
+          items:
+            type: string
+          example:
+            - Ficção científica
+            - Aventura
+            - Drama
+        diretor:
+          type: object
+          properties:
+            nome:
+              type: string
+              example: Christopher Nolan
+            nacionalidade:
+              type: string
+              example: Britânico-americana
+            anoNascimento:
+              type: integer
+              example: 1970
+        atores:
+          type: array
+          items:
+            type: object
+            properties:
+              nome:
+                type: string
+                example: Anne Hathaway
+              personagem:
+                type: string
+                example: Dra. Brand
+        avaliacao:
+          type: object
+          properties:
+            media:
+              type: number
+              example: 8.7
+            totalVotos:
+              type: integer
+              example: 1980000
+            fonte:
+              type: string
+              example: IMDb
+    ListaFiltrada:
+      type: object
+      description: 'Resposta padrão das consultas: repete o filtro aplicado e devolve os dados.'
+      properties:
+        filtro:
+          type: object
+          description: Filtro montado a partir da query string.
+        total:
+          type: integer
+          example: 5
+        dados:
+          type: array
+          items:
+            type: object
+    RespostaExercicio:
+      type: object
+      properties:
+        exercicio:
+          type: string
+          example: 6d
+        enunciado:
+          type: string
+          example: Produtos que não sejam da marca TechPro nem da marca Vision.
+        comandoMongosh:
+          type: string
+          example: 'db.produtos.find({ $nor: [{ marca: "TechPro" }, { marca: "Vision" }] })'
+        total:
+          type: integer
+          example: 2
+        resultado:
+          oneOf:
+            - type: array
+              items:
+                type: object
+            - type: integer
+    ResultadoAtualizacao:
+      type: object
+      properties:
+        encontrados:
+          type: integer
+          example: 5
+        modificados:
+          type: integer
+          example: 5
+    ResultadoRemocao:
+      type: object
+      properties:
+        removidos:
+          type: integer
+          example: 1
+    ResultadoInsercaoMultipla:
+      type: object
+      properties:
+        inseridos:
+          type: integer
+          example: 4
+        ids:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/ObjectId'
+    Erro:
+      type: object
+      properties:
+        erro:
+          type: string
+          example: Recurso não encontrado.
+  parameters:
+    IdPath:
+      name: id
+      in: path
+      required: true
+      description: ObjectId do documento.
+      schema:
+        $ref: '#/components/schemas/ObjectId'
+    NumeroPedidoPath:
+      name: numero
+      in: path
+      required: true
+      description: Número do pedido (campo `numero`, não o `_id`).
+      schema:
+        type: integer
+        example: 1001
+  responses:
+    RequisicaoInvalida:
+      description: Dados inválidos ou campos obrigatórios ausentes.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Erro'
+    NaoEncontrado:
+      description: Documento não encontrado.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Erro'
+    Conflito:
+      description: Conflito — o recurso já existe.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Erro'
+paths:
+  /api/vendas:
+    get:
+      tags:
+        - Vendas
+      summary: Lista vendas usando aggregate com $match e $sort (exercício 17)
+      description: >
+        O pipeline montado é devolvido junto da resposta, para conferência. O `$match` vem sempre antes do `$sort`,
+        reduzindo o volume processado.
+      parameters:
+        - name: categoria
+          in: query
+          schema:
+            type: string
+          example: Periféricos
+          description: Estágio $match — exercício 17a.
+        - name: quantidadeMin
+          in: query
+          schema:
+            type: integer
+          example: 3
+          description: Estágio $match com $gt — exercício 17b.
+        - name: ordenarPor
+          in: query
+          schema:
+            type: string
+            enum:
+              - quantidade
+              - valorUnitario
+              - produto
+        - name: ordem
+          in: query
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+            default: desc
+      responses:
+        '200':
+          description: Vendas e o pipeline utilizado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pipeline:
+                    type: array
+                    items:
+                      type: object
+                    description: Estágios enviados ao MongoDB.
+                  total:
+                    type: integer
+                  dados:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Venda'
+    post:
+      tags:
+        - Vendas
+      summary: Registra uma ou várias vendas (exercício 17)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/Venda'
+                - type: array
+                  items:
+                    $ref: '#/components/schemas/Venda'
+            example:
+              produto: Notebook
+              categoria: Informática
+              quantidade: 2
+              valorUnitario: 4500
+      responses:
+        '201':
+          description: Venda(s) registrada(s).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultadoInsercaoMultipla'
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+  /api/vendas/resumo:
+    get:
+      tags:
+        - Vendas
+      summary: Totais e médias por categoria (exercício 18)
+      description: '`$group` com `$sum` (total e contagem), `$avg` (valor médio) e `$push` (lista de produtos).'
+      responses:
+        '200':
+          description: Resumo das vendas.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalProdutosVendidos:
+                    type: integer
+                    example: 20
+                  porCategoria:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        categoria:
+                          type: string
+                          example: Periféricos
+                        quantidadeTotal:
+                          type: integer
+                          example: 14
+                        valorMedio:
+                          type: number
+                          example: 266.67
+                        registros:
+                          type: integer
+                          example: 3
+                        produtos:
+                          type: array
+                          items:
+                            type: string
+  /api/vendas/faturamento:
+    get:
+      tags:
+        - Vendas
+      summary: Faturamento total, por categoria e por venda (exercício 19)
+      description: >-
+        `$project` com `$multiply` calcula `valorTotal = quantidade × valorUnitario`; `$group` + `$sum` + `$sort`
+        agregam por categoria.
+      responses:
+        '200':
+          description: Faturamento calculado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  faturamentoTotal:
+                    type: number
+                    example: 16200
+                  porCategoria:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        categoria:
+                          type: string
+                          example: Informática
+                        faturamento:
+                          type: number
+                          example: 12600
+                  porVenda:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        produto:
+                          type: string
+                        quantidade:
+                          type: integer
+                        valorUnitario:
+                          type: number
+                        valorTotal:
+                          type: number
+  /api/vendas/{id}:
+    get:
+      tags:
+        - Vendas
+      summary: Busca uma venda pelo _id
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          description: Venda encontrada.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Venda'
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+    delete:
+      tags:
+        - Vendas
+      summary: Remove uma venda
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          description: Documento removido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultadoRemocao'
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+  /api/produtos:
+    get:
+      tags:
+        - Produtos
+      summary: Lista produtos com filtros, projeção, ordenação e limite
+      description: |
+        Cobre os exercícios 4 a 8 em um único endpoint.
+
+        Exemplos:
+        - `?marca=TechPro` — exercício 4b
+        - `?precoMin=200&precoMax=1000` — exercício 5e (`$gte` + `$lte`)
+        - `?ordenarPor=preco&ordem=asc&limite=3` — exercício 8c
+        - `?campos=nome,preco&semId=true` — exercício 7d
+      parameters:
+        - name: nome
+          in: query
+          schema:
+            type: string
+          example: Mouse
+        - name: marca
+          in: query
+          schema:
+            type: string
+          example: TechPro
+        - name: estoque
+          in: query
+          schema:
+            type: integer
+          description: Estoque exatamente igual ao valor.
+        - name: precoMin
+          in: query
+          schema:
+            type: number
+          description: Operador $gte sobre o preço.
+        - name: precoMax
+          in: query
+          schema:
+            type: number
+          description: Operador $lte sobre o preço.
+        - name: estoqueMin
+          in: query
+          schema:
+            type: integer
+          description: Operador $gte sobre o estoque.
+        - name: estoqueMax
+          in: query
+          schema:
+            type: integer
+          description: Operador $lte sobre o estoque.
+        - name: ordenarPor
+          in: query
+          schema:
+            type: string
+            enum:
+              - nome
+              - preco
+              - estoque
+              - marca
+        - name: ordem
+          in: query
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+            default: asc
+        - name: limite
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+          description: Equivale ao limit().
+        - name: campos
+          in: query
+          schema:
+            type: string
+          example: nome,preco
+          description: Campos a incluir na projeção, separados por vírgula.
+        - name: semId
+          in: query
+          schema:
+            type: boolean
+          description: 'Quando true, remove o _id do resultado (_id: 0).'
+      responses:
+        '200':
+          description: Lista de produtos.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ListaFiltrada'
+                  - type: object
+                    properties:
+                      dados:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Produto'
+    post:
+      tags:
+        - Produtos
+      summary: Cadastra um produto ou vários de uma vez (exercícios 2 e 3)
+      description: Um objeto no corpo usa `insertOne()`; um array usa `insertMany()`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/ProdutoEntrada'
+                - type: array
+                  items:
+                    $ref: '#/components/schemas/ProdutoEntrada'
+            examples:
+              umProduto:
+                summary: insertOne (exercício 2)
+                value:
+                  nome: Notebook
+                  marca: TechPro
+                  preco: 4500
+                  estoque: 10
+              varios:
+                summary: insertMany (exercício 3)
+                value:
+                  - nome: Mouse
+                    marca: TechPro
+                    preco: 120
+                    estoque: 30
+                  - nome: Headset
+                    marca: SoundMax
+                    preco: 250
+                    estoque: 20
+      responses:
+        '201':
+          description: Produto(s) criado(s).
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/Produto'
+                  - $ref: '#/components/schemas/ResultadoInsercaoMultipla'
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+  /api/produtos/contagem:
+    get:
+      tags:
+        - Produtos
+      summary: Conta os documentos da coleção (exercício 3b)
+      description: Executa `db.produtos.countDocuments()`.
+      responses:
+        '200':
+          description: Total de produtos.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                    example: 5
+  /api/produtos/{id}:
+    get:
+      tags:
+        - Produtos
+      summary: Busca um produto pelo _id
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          description: Produto encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Produto'
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+    patch:
+      tags:
+        - Produtos
+      summary: Atualiza campos do produto com $set (exercício 9)
+      description: Um `_id` enviado no corpo é descartado, pois o campo é imutável.
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+            examples:
+              alterarPreco:
+                summary: Exercício 9a
+                value:
+                  preco: 150
+              novoCampo:
+                summary: Exercício 9c
+                value:
+                  categoria: Periféricos
+      responses:
+        '200':
+          description: Documento já atualizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Produto'
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+    delete:
+      tags:
+        - Produtos
+      summary: Remove um produto com deleteOne (exercício 11c)
+      description: |
+        `deleteOne()` remove apenas o primeiro documento correspondente ao filtro; `deleteMany()` removeria todos.
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          description: Documento removido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultadoRemocao'
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+  /api/produtos/{id}/estoque:
+    patch:
+      tags:
+        - Produtos
+      summary: Soma (ou subtrai) unidades no estoque com $inc (exercícios 10a e 10b)
+      description: Valores negativos reduzem o estoque — não existe operador `$dec` no MongoDB.
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - quantidade
+              properties:
+                quantidade:
+                  type: integer
+                  example: 5
+            examples:
+              aumentar:
+                summary: Exercicio 10a
+                value:
+                  quantidade: 5
+              reduzir:
+                summary: Exercicio 10b
+                value:
+                  quantidade: -2
+      responses:
+        '200':
+          description: Documento já atualizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Produto'
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+  /api/produtos/{id}/preco:
+    patch:
+      tags:
+        - Produtos
+      summary: Soma um valor ao preço com $inc (exercício 10c)
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - valor
+              properties:
+                valor:
+                  type: number
+                  example: 50
+      responses:
+        '200':
+          description: Documento já atualizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Produto'
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+  /api/produtos/marcar-disponiveis:
+    post:
+      tags:
+        - Produtos
+      summary: Marca disponivel=true nos produtos com estoque maior que zero (exercício 10d)
+      description: Usa `updateMany()` com `$set` — atinge todos os documentos do filtro.
+      responses:
+        '200':
+          description: Quantidade de documentos encontrados e modificados.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultadoAtualizacao'
+  /api/pedidos:
+    get:
+      tags:
+        - Pedidos
+      summary: Lista pedidos com filtros (exercício 20, itens a a e)
+      description: >
+        `?cliente=` e `?cidade=` usam notação de ponto sobre o documento aninhado `cliente`; `?produto=` procura dentro
+        do array de documentos `itens` (`itens.produto`).
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/StatusPedido'
+          description: Exercício 20b.
+        - name: cliente
+          in: query
+          schema:
+            type: string
+          example: Ana Silva
+          description: Filtra por cliente.nome — exercício 20c.
+        - name: cidade
+          in: query
+          schema:
+            type: string
+          example: Vitória da Conquista
+          description: Filtra por cliente.cidade — exercício 20d.
+        - name: produto
+          in: query
+          schema:
+            type: string
+          example: Notebook
+          description: Filtra por itens.produto — exercício 20e.
+        - name: formaPagamento
+          in: query
+          schema:
+            type: string
+            enum:
+              - Cartão
+              - Pix
+              - Boleto
+      responses:
+        '200':
+          description: Lista de pedidos ordenada por número.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ListaFiltrada'
+                  - type: object
+                    properties:
+                      dados:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Pedido'
+    post:
+      tags:
+        - Pedidos
+      summary: Cria um pedido, calculando o valorTotal (exercício 20)
+      description: >
+        A API soma `quantidade × preco` de cada item e grava o resultado em `valorTotal`. O número do pedido é único —
+        um número repetido devolve 409.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Pedido'
+            example:
+              numero: 1007
+              cliente:
+                nome: Ana Silva
+                cidade: Vitória da Conquista
+              itens:
+                - produto: Notebook
+                  quantidade: 1
+                  preco: 4500
+                - produto: Mouse
+                  quantidade: 2
+                  preco: 150
+              status: Pago
+              formaPagamento: Cartão
+      responses:
+        '201':
+          description: Pedido criado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pedido'
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+        '409':
+          $ref: '#/components/responses/Conflito'
+  /api/pedidos/por-status:
+    get:
+      tags:
+        - Pedidos
+      summary: Agrupa os pedidos por status (exercício 20h)
+      description: '`$group` com `_id: "$status"` e `$sum: 1` para contar, mais `$push` para listar os números.'
+      responses:
+        '200':
+          description: Quantidade de pedidos em cada situação.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                  dados:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        status:
+                          type: string
+                          example: Entregue
+                        totalPedidos:
+                          type: integer
+                          example: 2
+                        numeros:
+                          type: array
+                          items:
+                            type: integer
+                          example:
+                            - 1003
+                            - 1006
+  /api/pedidos/contagem:
+    get:
+      tags:
+        - Pedidos
+      summary: Conta pedidos, opcionalmente por status (exercício 20g)
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/StatusPedido'
+      responses:
+        '200':
+          description: Total encontrado.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  filtro:
+                    type: object
+                  total:
+                    type: integer
+                    example: 2
+  /api/pedidos/faturamento:
+    get:
+      tags:
+        - Pedidos
+      summary: Valor de cada pedido e faturamento consolidado
+      description: >
+        Usa `$unwind` para desmontar o array `itens` (um documento por item) e depois `$group` somando `quantidade ×
+        preco`. O faturamento confirmado ignora pedidos cancelados e aguardando pagamento.
+      responses:
+        '200':
+          description: Faturamento por pedido.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  faturamentoTotal:
+                    type: number
+                    example: 14800
+                  faturamentoConfirmado:
+                    type: number
+                    example: 9250
+                  pedidos:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        numero:
+                          type: integer
+                          example: 1001
+                        cliente:
+                          type: string
+                        status:
+                          type: string
+                        valorPedido:
+                          type: number
+                          example: 4800
+  /api/pedidos/produtos-mais-vendidos:
+    get:
+      tags:
+        - Pedidos
+      summary: Ranking de produtos a partir do array de itens
+      description: '`$match` (descarta cancelados) + `$unwind` + `$group` com `$sum`.'
+      responses:
+        '200':
+          description: Produtos ordenados por unidades vendidas.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                  dados:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        produto:
+                          type: string
+                          example: Mouse
+                        unidades:
+                          type: integer
+                          example: 5
+                        receita:
+                          type: number
+                          example: 750
+  /api/pedidos/{numero}:
+    get:
+      tags:
+        - Pedidos
+      summary: Busca um pedido pelo número
+      description: A busca usa o campo de negócio `numero`, e não o `_id` do MongoDB.
+      parameters:
+        - $ref: '#/components/parameters/NumeroPedidoPath'
+      responses:
+        '200':
+          description: Pedido encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pedido'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+    delete:
+      tags:
+        - Pedidos
+      summary: Remove um pedido pelo número
+      parameters:
+        - $ref: '#/components/parameters/NumeroPedidoPath'
+      responses:
+        '200':
+          description: Documento removido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultadoRemocao'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+  /api/pedidos/{numero}/status:
+    patch:
+      tags:
+        - Pedidos
+      summary: Altera o status do pedido (exercício 20f)
+      description: >
+        Aplica `$set` no status e `$push` em `historicoStatus`, registrando a data da mudança. Status fora da lista
+        permitida devolve 400.
+      parameters:
+        - $ref: '#/components/parameters/NumeroPedidoPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  $ref: '#/components/schemas/StatusPedido'
+            example:
+              status: Enviado
+      responses:
+        '200':
+          description: Pedido já atualizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pedido'
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+  /api/pedidos/{numero}/itens:
+    post:
+      tags:
+        - Pedidos
+      summary: Acrescenta um item ao pedido
+      description: '`$push` no array `itens` e `$inc` no `valorTotal`, em uma única operação atômica.'
+      parameters:
+        - $ref: '#/components/parameters/NumeroPedidoPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ItemPedido'
+            example:
+              produto: Headset
+              quantidade: 1
+              preco: 300
+      responses:
+        '200':
+          description: Pedido já atualizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pedido'
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+  /api/filmes:
+    get:
+      tags:
+        - Filmes
+      summary: Lista filmes (exercício 15)
+      description: >
+        Demonstra os três tipos de consulta da modelagem proposta: array de strings (`generos`), documento aninhado
+        (`diretor.nome`) e array de documentos (`atores.nome`).
+      parameters:
+        - name: genero
+          in: query
+          schema:
+            type: string
+          example: Drama
+          description: Valor dentro do array generos.
+        - name: diretor
+          in: query
+          schema:
+            type: string
+          example: Christopher Nolan
+          description: Campo diretor.nome.
+        - name: ator
+          in: query
+          schema:
+            type: string
+          example: Anne Hathaway
+          description: Campo atores.nome.
+        - name: ano
+          in: query
+          schema:
+            type: integer
+          example: 2014
+        - name: notaMin
+          in: query
+          schema:
+            type: number
+          example: 8
+          description: Campo avaliacao.media com $gte.
+      responses:
+        '200':
+          description: Lista de filmes.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ListaFiltrada'
+                  - type: object
+                    properties:
+                      dados:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Filme'
+    post:
+      tags:
+        - Filmes
+      summary: Cadastra um filme (exercício 15)
+      description: Documento com valores simples, arrays (generos, atores) e documentos aninhados (diretor, avaliacao).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Filme'
+      responses:
+        '201':
+          description: Filme criado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Filme'
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+  /api/filmes/{id}:
+    get:
+      tags:
+        - Filmes
+      summary: Busca um filme pelo _id
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          description: Filme encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Filme'
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+    delete:
+      tags:
+        - Filmes
+      summary: Remove um filme
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          description: Documento removido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultadoRemocao'
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+  /api/filmes/{id}/atores:
+    post:
+      tags:
+        - Filmes
+      summary: Acrescenta um ator ao elenco com $push
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - nome
+                - personagem
+              properties:
+                nome:
+                  type: string
+                  example: Casey Affleck
+                personagem:
+                  type: string
+                  example: Tom
+      responses:
+        '200':
+          description: Filme já atualizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Filme'
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+  /api/filmes/{id}/generos:
+    post:
+      tags:
+        - Filmes
+      summary: Acrescenta um gênero sem duplicar, com $addToSet
+      description: Gêneros formam um conjunto — repetir não faria sentido, por isso `$addToSet` e não `$push`.
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - genero
+              properties:
+                genero:
+                  type: string
+                  example: Suspense
+      responses:
+        '200':
+          description: Filme já atualizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Filme'
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+  /api/exercicios:
+    get:
+      tags:
+        - Exercícios
+      summary: Índice dos 20 exercícios da lista
+      description: Devolve, para cada exercício, o título, os itens disponíveis e a URL para executá-los.
+      responses:
+        '200':
+          description: Índice dos exercícios.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                    example: 20
+                  exercicios:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        exercicio:
+                          type: integer
+                          example: 6
+                        titulo:
+                          type: string
+                          example: Operadores lógicos
+                        itens:
+                          type: array
+                          items:
+                            type: string
+                          example:
+                            - a
+                            - b
+                            - c
+                            - d
+                        url:
+                          type: string
+                          format: uri
+  /api/exercicios/{numero}:
+    get:
+      tags:
+        - Exercícios
+      summary: Executa todos os itens de um exercício
+      description: |
+        Para cada item devolve o enunciado, o comando equivalente no `mongosh` e o resultado real vindo do banco.
+      parameters:
+        - name: numero
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 2
+            maximum: 20
+          example: 6
+      responses:
+        '200':
+          description: Itens executados.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  exercicio:
+                    type: integer
+                    example: 6
+                  titulo:
+                    type: string
+                    example: Operadores lógicos
+                  observacao:
+                    type: string
+                    description: Presente apenas nos exercícios de escrita.
+                  itens:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RespostaExercicio'
+        '404':
+          description: Exercício inexistente — a resposta lista os números disponíveis.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+  /api/exercicios/{numero}/{letra}:
+    get:
+      tags:
+        - Exercícios
+      summary: Executa um item específico da lista
+      description: 'Exemplo: `/api/exercicios/6/d` devolve o resultado do exercício 6d (`$nor`).'
+      parameters:
+        - name: numero
+          in: path
+          required: true
+          schema:
+            type: integer
+            minimum: 2
+            maximum: 20
+          example: 6
+        - name: letra
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: ^[a-h]$
+          example: d
+      responses:
+        '200':
+          description: Enunciado, comando e resultado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RespostaExercicio'
+        '404':
+          description: Item inexistente — a resposta lista os itens disponíveis.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Erro'
+  /api/clientes:
+    get:
+      tags:
+        - Clientes
+      summary: Lista clientes filtrando por campo aninhado ou por array
+      description: >
+        `?cidade=` usa a notação de ponto (`endereco.cidade`) — exercício 12b. `?interesse=` e `?tecnologia=` buscam um
+        valor dentro de um array, sem precisar de operador especial — exercícios 13a e 13b.
+      parameters:
+        - name: nome
+          in: query
+          schema:
+            type: string
+          example: Ana Silva
+        - name: cidade
+          in: query
+          schema:
+            type: string
+          example: Vitória da Conquista
+          description: Filtra por `endereco.cidade` (documento aninhado).
+        - name: estado
+          in: query
+          schema:
+            type: string
+          example: BA
+        - name: interesse
+          in: query
+          schema:
+            type: string
+          example: games
+          description: Valor procurado dentro do array `interesses`.
+        - name: tecnologia
+          in: query
+          schema:
+            type: string
+          example: MongoDB
+          description: Valor procurado dentro do array `tecnologias`.
+      responses:
+        '200':
+          description: Lista de clientes.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ListaFiltrada'
+                  - type: object
+                    properties:
+                      dados:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Cliente'
+    post:
+      tags:
+        - Clientes
+      summary: Cadastra um cliente (exercícios 12, 13 e 14)
+      description: O corpo aceita documento aninhado (`endereco`) e arrays (`interesses`, `tecnologias`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Cliente'
+            examples:
+              comEnderecoAninhado:
+                summary: Exercício 12
+                value:
+                  nome: Ana Silva
+                  email: ana@email.com
+                  endereco:
+                    cidade: Vitória da Conquista
+                    estado: BA
+                    cep: 45000-000
+              comArray:
+                summary: Exercício 13
+                value:
+                  nome: Bruno Santos
+                  email: bruno@email.com
+                  interesses:
+                    - games
+                    - programacao
+                    - cinema
+      responses:
+        '201':
+          description: Cliente criado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cliente'
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+  /api/clientes/{id}:
+    get:
+      tags:
+        - Clientes
+      summary: Busca um cliente pelo _id
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          description: Cliente encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cliente'
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+    delete:
+      tags:
+        - Clientes
+      summary: Remove um cliente
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          description: Documento removido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultadoRemocao'
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+  /api/clientes/{id}/endereco:
+    patch:
+      tags:
+        - Clientes
+      summary: Altera campos do endereço com $set e notação de ponto (exercício 12d)
+      description: >
+        Cada campo enviado vira `endereco.<campo>` no `$set`, alterando apenas o subcampo. Substituir o objeto
+        `endereco` inteiro apagaria os demais campos.
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Endereco'
+            example:
+              cep: 45000-100
+      responses:
+        '200':
+          description: Campos alterados e documento resultante.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  atualizou:
+                    type: object
+                    example:
+                      endereco.cep: 45000-100
+                  documento:
+                    $ref: '#/components/schemas/Cliente'
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+  /api/clientes/{id}/{campo}:
+    post:
+      tags:
+        - Clientes
+      summary: Acrescenta um valor a um array com $push ou $addToSet (exercícios 13c e 14)
+      description: |
+        - `unico: false` (padrão) → **$push**: acrescenta sempre, permitindo repetição.
+        - `unico: true` → **$addToSet**: só acrescenta se o valor ainda não existir.
+
+        Ao usar `$addToSet` com um valor já presente, a resposta traz o documento inalterado
+        (no MongoDB, `matchedCount: 1` e `modifiedCount: 0`).
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+        - name: campo
+          in: path
+          required: true
+          schema:
+            type: string
+            enum:
+              - interesses
+              - tecnologias
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - valor
+              properties:
+                valor:
+                  type: string
+                  example: musica
+                unico:
+                  type: boolean
+                  default: false
+                  description: true usa $addToSet.
+            examples:
+              push:
+                summary: $push (exercício 13c)
+                value:
+                  valor: musica
+              addToSet:
+                summary: $addToSet (exercício 14d)
+                value:
+                  valor: MongoDB
+                  unico: true
+      responses:
+        '200':
+          description: Operador aplicado e documento resultante.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  operador:
+                    type: string
+                    enum:
+                      - $push
+                      - $addToSet
+                  valor:
+                    type: string
+                  documento:
+                    $ref: '#/components/schemas/Cliente'
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+  /api/clientes/{id}/{campo}/{valor}:
+    delete:
+      tags:
+        - Clientes
+      summary: Remove um valor do array com $pull (exercício 13d)
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+        - name: campo
+          in: path
+          required: true
+          schema:
+            type: string
+            enum:
+              - interesses
+              - tecnologias
+        - name: valor
+          in: path
+          required: true
+          schema:
+            type: string
+          example: cinema
+      responses:
+        '200':
+          description: Documento resultante.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  operador:
+                    type: string
+                    example: $pull
+                  valor:
+                    type: string
+                  documento:
+                    $ref: '#/components/schemas/Cliente'
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+  /api/alunos:
+    get:
+      tags:
+        - Alunos
+      summary: Lista alunos com filtros e projeção (exercício 16)
+      description: >
+        `?nota=9` busca o valor dentro do array `notas` (exercício 16d); `?campos=nome,curso` faz a projeção removendo o
+        `_id` (exercício 16e).
+      parameters:
+        - name: curso
+          in: query
+          schema:
+            type: string
+          example: Sistemas de Informação
+        - name: idadeMin
+          in: query
+          schema:
+            type: integer
+          example: 20
+          description: Operador $gt.
+        - name: idadeMax
+          in: query
+          schema:
+            type: integer
+          description: Operador $lt.
+        - name: semestre
+          in: query
+          schema:
+            type: integer
+          example: 4
+        - name: nota
+          in: query
+          schema:
+            type: number
+          example: 9
+          description: Procura o valor dentro do array de notas.
+        - name: campos
+          in: query
+          schema:
+            type: string
+          example: nome,curso
+      responses:
+        '200':
+          description: Lista de alunos.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/ListaFiltrada'
+                  - type: object
+                    properties:
+                      dados:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Aluno'
+    post:
+      tags:
+        - Alunos
+      summary: Cadastra um ou vários alunos (exercício 16)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/Aluno'
+                - type: array
+                  items:
+                    $ref: '#/components/schemas/Aluno'
+            example:
+              nome: Lucas
+              curso: Sistemas de Informação
+              idade: 21
+              semestre: 4
+              notas:
+                - 8.5
+                - 7
+                - 9
+      responses:
+        '201':
+          description: Aluno(s) criado(s).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultadoInsercaoMultipla'
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+  /api/alunos/media:
+    get:
+      tags:
+        - Alunos
+      summary: Média das notas de cada aluno
+      description: Aggregation com `$project`, `$avg` sobre o array `notas` e `$round`.
+      responses:
+        '200':
+          description: Alunos ordenados da maior para a menor média.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                  dados:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        nome:
+                          type: string
+                          example: Júlia
+                        curso:
+                          type: string
+                        notas:
+                          type: array
+                          items:
+                            type: number
+                        media:
+                          type: number
+                          example: 9.5
+  /api/alunos/por-curso:
+    get:
+      tags:
+        - Alunos
+      summary: Quantidade de alunos e média geral por curso
+      description: Aggregation com `$unwind` no array de notas, `$group` com `$addToSet` e `$avg`, e `$size`.
+      responses:
+        '200':
+          description: Cursos ordenados pela média geral.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                  dados:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        curso:
+                          type: string
+                          example: Ciência da Computação
+                        totalAlunos:
+                          type: integer
+                          example: 1
+                        mediaGeral:
+                          type: number
+                          example: 9.5
+  /api/alunos/{id}:
+    get:
+      tags:
+        - Alunos
+      summary: Busca um aluno pelo _id
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          description: Aluno encontrado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Aluno'
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+    delete:
+      tags:
+        - Alunos
+      summary: Remove um aluno
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      responses:
+        '200':
+          description: Documento removido.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResultadoRemocao'
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+  /api/alunos/{id}/notas:
+    post:
+      tags:
+        - Alunos
+      summary: Acrescenta uma nota ao array com $push
+      description: Aqui o `$push` é o operador correto — a mesma nota pode legitimamente se repetir.
+      parameters:
+        - $ref: '#/components/parameters/IdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - nota
+              properties:
+                nota:
+                  type: number
+                  example: 8.5
+      responses:
+        '200':
+          description: Documento já atualizado.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Aluno'
+        '400':
+          $ref: '#/components/responses/RequisicaoInvalida'
+        '404':
+          $ref: '#/components/responses/NaoEncontrado'
+  /api:
+    get:
+      tags:
+        - Geral
+      summary: Índice dos recursos da API
+      responses:
+        '200':
+          description: Links para cada grupo de rotas.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  api:
+                    type: string
+                  banco:
+                    type: string
+                    example: loja
+                  recursos:
+                    type: object
+                    additionalProperties:
+                      type: string
+                      format: uri
+  /api/status:
+    get:
+      tags:
+        - Geral
+      summary: Status da conexão e contagem de documentos por coleção
+      responses:
+        '200':
+          description: Estado atual do banco.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  conectado:
+                    type: boolean
+                    example: true
+                  banco:
+                    type: string
+                    example: loja
+                  colecoes:
+                    type: object
+                    additionalProperties:
+                      type: integer
+                    example:
+                      alunos: 5
+                      clientes: 3
+                      filmes: 1
+                      pedidos: 6
+                      produtos: 5
+                      vendas: 5
